@@ -1,0 +1,31 @@
+$(function(){
+    if ($('.sandiego, .sandiego_chrome').length>0) {
+        $(".headerSearch .dropdown").click(function(){
+            if($(this).next("ul").is(':visible')) {
+                $(this).next("ul").fadeOut();
+            }
+            else {
+                $(this).next("ul").fadeIn();
+            }
+
+        });
+        $(document).mouseup(function (e) {
+            var container = $(".headerSearch ul, .headerSearch .dropdown");
+            if (!container.is(e.target)
+                    && container.has(e.target).length === 0)
+            {
+                $(".headerSearch ul").fadeOut();
+            }
+        });
+
+        $(".headerSearch ul li a").click(function(e){
+            e.preventDefault();
+            var $this = $(this);
+            var thisTxt = $this.text();
+            $(".headerSearch .dropdown").text(thisTxt);
+            $(".headerSearch ul").fadeOut("fast");
+            $this.parents('form').attr('action', $this.attr('href'));
+            return false;
+        });
+    }
+});

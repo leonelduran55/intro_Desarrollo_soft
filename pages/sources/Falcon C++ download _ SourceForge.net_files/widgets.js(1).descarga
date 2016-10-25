@@ -1,0 +1,212 @@
+/*global net, strings, $, SF, ga, Handlebars, console, jQuery, truste */
+
+SF.Widgets = SF.Widgets || {};
+
+//------------------------------------
+//Widget for KMU subscriptions
+//------------------------------------
+SF.Widgets.submitSubscription = function($form) {
+  var $subscribe = $form;
+  $('.subscriber-submit', $subscribe).attr('disabled','disabled').fadeTo('fast', 0.25);
+  $.ajax({
+    url: $subscribe.attr('action'),
+    type: 'POST',
+    data: $subscribe.serialize(),
+    success: function(data, textStatus, xhr) {
+      $('#messages').notify(data.message, {status: data.status, sticky:true});
+      if($('.subscriber-email[type=email]').length > 0) {
+        $subscribe.find('input[type=email]').clone().attr('type', 'hidden').appendTo($subscribe);
+        $subscribe.find('input[type=email]').remove();
+        $('.subscriber-existing-email').children('code').
+          text($subscribe.find('.subscriber-email').val()).end().show();
+      }
+      var action = $subscribe.attr('action');
+      var event;
+      if (action.search(/unsubscribe$/) === -1) {
+        event = 'UpdaterSubscribe';
+        if (window.ga) {
+          ga('send', 'event', 'Updater', event, '{{ p.shortname }}', 1, {'nonInteraction': 1});
+        }
+        if (SF.trackEvent) {
+          SF.trackEvent(event);
+        }
+        $('.subscriber-submit>span').text('Unsubscribe from Updates');
+        $subscribe.attr('action', action.replace(/subscribe$/, 'unsubscribe'));
+      } else {
+        event = 'UpdaterUnsubscribe';
+        if (window.ga) {
+          ga('send', 'event', 'Updater', event, '{{ p.shortname }}', 1, {'nonInteraction': 1});
+        }
+        if (SF.trackEvent) {
+          SF.trackEvent(event);
+        }
+        $('.subscriber-submit>span').text('Subscribe to Updates');
+        $subscribe.attr('action', action.replace(/unsubscribe$/, 'subscribe'));
+      }
+    },
+    error: function(xhr, textStatus, errorThrown) {
+      var resp = $.parseJSON(xhr.responseText);
+      $('#messages').notify(resp.error, {status: 'error'});
+    },
+    complete: function(xhr, textStatus) {
+      $('.subscriber-submit', $subscribe).removeAttr('disabled').fadeTo('fast', 1.0);
+    }
+  });
+};
+
+
+SF.Widgets.KMUNSWidget = (function($){
+    var defaults = {
+        selector : '.newsletter-subscribe-form',
+        consentInputSet: '.kmunl_consent',
+        debug : false
+    };
+
+    function KMUNSWidget(options){
+        var $emailInputSet, $consentInputSet, $el, settings;
+        settings = $.extend(defaults, options);
+
+        $el = $(settings.selector);
+        $consentInputSet = $(settings.consentInputSet, $el);
+
+        settings.requireExplicitConsent = $el.hasClass('kmunl-require-consent');
+
+        $el.bind('submit', submit);
+        if (settings.requireExplicitConsent) {
+            $('input', $consentInputSet).bind('change', validateConsent);
+        }
+
+        function submit(){
+            if (settings.requireExplicitConsent) {
+                var checked = validateConsent();
+                if (!checked) {
+                    return false;
+                }
+            }
+        }
+
+        function validateConsent (){
+            if (settings.requireExplicitConsent) {
+                var checked = $("input[type=checkbox]:checked", $consentInputSet).length;
+                if (!checked) {
+                    $('.kmunl_consent', $el).addClass('has-error');
+                    return false;
+                }else{
+                    $('.kmunl_consent', $el).removeClass('has-error');
+                }
+                return checked;
+            }
+        }
+
+    }
+
+    return KMUNSWidget;
+})($);
+
+
+SF.Widgets.SendLinkWidget = (function($){
+    var defaults = {
+        selector : '.send-link-form',
+        emailInputSelector : '.subscriber-email',
+        emailInputSet: '.nsw-error-container',
+        tmpl: '<div class="message alert-box <%=newClass%> <%=status.replace("error", "alert")%> <% if (sticky) { %><%=stickyClass %><% } %>" data-timer="<%=timer%>"><% if (title) { %><h6><%=title%></h6><% } %><div class="content"><%=message%></div><a href="#" class="close ico-close">⊗</a></div>',
+        modalID : null
+    };
+
+    function SendLinkWidget(options){
+
+        var $emailInputSet, $el, settings;
+        settings = $.extend(defaults, options);
+
+        $el = $(settings.selector);
+        $emailInputSet = $(settings.emailInputSet, $el);
+
+        $el.bind('submit', submit);
+
+        function submit(){
+            var endpoint = $el.attr('action');
+
+            function handleError(data){
+                var msg = data.message ? data.message : JSON.parse(data.responseText).error;
+                $('#messages').notify(msg, {status: 'error', tmpl: settings.tmpl});
+            }
+
+            function handleSuccess(data){
+                if (data.status === "success") {
+                    $('#messages').notify('We have sent you an email with a download link.', {status:'success', tmpl: settings.tmpl});
+                    if (settings.modalID) {
+                        $(settings.modalID).foundation('reveal', 'close');
+                    }
+                }else{
+                    handleError(data);
+                }
+            }
+
+            $.ajax({
+                url: endpoint,
+                type: 'post',
+                data: $el.serialize(),
+            })
+            .success(handleSuccess)
+            .error(handleError);
+
+            return false;
+        }
+    }
+
+    return SendLinkWidget;
+})($);
+
+
+
+//------------------------------------
+//Widget for self-collapsible section
+//------------------------------------
+SF.Widgets.CollapsibleSection = (function($){
+    /*jshint multistr:true */
+    var _defaults = {
+        readMoreSelector: '#read-more',
+        readLessSelector: '#read-less',
+        height: '12em',
+        parent: null,
+    };
+
+    function CollapsibleSection(selector, options){
+        var _this = this;
+        _this.selector = selector;
+        _this.settings = $.extend(_this.settings, _defaults, options);
+
+        truncate();
+
+        function resetLinks(){
+            $(_this.settings.readMoreSelector).remove();
+            $(_this.settings.readLessSelector).remove();
+        }
+
+        function afterTruncate(isTruncated){
+            resetLinks();
+            if(isTruncated) {
+                $(_this.settings.parent || _this.selector).append('<a class="read-more" id="' + _this.settings.readMoreSelector.substring(1) + '">Read More &#187;</a>');
+            }else {
+                $(_this.selector).trigger('destroy').css({'height': 'auto'});
+            }
+        }
+
+        function truncate(c, result){
+            var d3Config = {after:_this.settings.readMoreSelector, watch:true, callback:afterTruncate};
+            $(_this.selector).height(_this.settings.height).dotdotdot(d3Config);
+        }
+
+        function unTruncate(e){
+            e.preventDefault();
+            $(_this.selector).trigger('destroy').css({'height': 'auto'});
+            resetLinks();
+            $(_this.settings.parent || _this.selector).append('<a class="read-more" id="' + _this.settings.readLessSelector.substring(1) + '">Read Less</a>');
+        }
+
+        $(_this.settings.parent || selector).delegate(_this.settings.readMoreSelector, 'click', unTruncate);
+        $(_this.settings.parent || selector).delegate(_this.settings.readLessSelector,'click', truncate);
+    }
+    return CollapsibleSection;
+
+}(window.jQuery));

@@ -47,6 +47,7 @@ summary {
 	font-family: Arial, Helvetica, sans-serif;
 	font-size: 14px;
 	text-align: center;
+	font-weight: bold;
 }
 
 /**
@@ -475,4 +476,16 @@ div {
 }
 .class body footer #apDiv25 {
 	font-size: 11px;
+}
+.class body section article section p strong {
+	text-align: justify;
+}
+section p strong {
+	text-align: center;
+}
+.class body section article section {
+	text-align: left;
+}
+section {
+	text-align: left;
 }

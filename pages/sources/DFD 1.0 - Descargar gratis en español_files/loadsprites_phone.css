@@ -1,0 +1,237 @@
+/******************************************
+Replace with your custom spritesheet name
+******************************************/
+.sprite {
+	background: url("spritesheet_phone.png") no-repeat;
+}
+
+/************************************
+ Used by unified index.html + main.js
+ DO NOT TOUCH.
+ ***********************************/
+
+/* The 5 end screen shapes */
+.triangle1 {
+    background-position: 0px 0px;
+    width: 60px;
+    height: 90px;
+    -ms-transform-origin: 15px 15px;
+    -webkit-transform-origin: 15px 15px;
+    transform-origin: 15px 15px;
+}
+
+.triangle2 {
+    background-position: -60px 0px;
+    width: 90px;
+    height: 90px;
+    -ms-transform-origin: 15px 15px;
+    -webkit-transform-origin: 15px 15px;
+    transform-origin: 15px 15px;
+}
+
+.triangle3 {
+    background-position: 0px -90px;
+    width: 150px;
+    height: 90px;
+    -ms-transform-origin: 15px 15px;
+    -webkit-transform-origin: 15px 15px;
+    transform-origin: 15px 15px;
+}
+
+.diamond {
+    background-position: -150px -120px;
+    width: 90px;
+    height: 90px;
+    -ms-transform-origin: 45px 45px;
+    -webkit-transform-origin: 45px 45px;
+    transform-origin: 45px 45px;
+}
+
+.parallelogram {
+    background-position: -150px 0px;
+    width: 60px;
+    height: 120px;
+    -ms-transform-origin: 15px 15px;
+    -webkit-transform-origin: 15px 15px;
+    transform-origin: 15px 15px;
+}
+
+.logoColored {
+    background-position: -250px -140px;
+    left: 640px;
+    top: 57px;
+    width: 75px;
+    height: 25px;
+    opacity: 1;
+}
+
+.logoWhite {
+    background-position: -350px -140px;
+    left: 640px;
+    top: 57px;
+    width: 75px;
+    height: 25px;
+    opacity: 0;
+}
+
+/* The 4 CTA button shapes */
+.ctaTriLeft {
+    background-position: -400px -15px;
+    left: 421px;
+    top: 40px;
+    width: 53px;
+    height: 53px;
+    opacity: 0;
+}
+
+.ctaPara {
+    background-position: -240px -15px;
+    left: 462px;
+    top: 0px;
+    width: 152px;
+    height: 54px;
+    opacity: 0;
+}
+
+.ctaTriRight {
+    background-position: -400px -75px;
+    left: 580px;
+    top: -21px;
+    width: 53px;
+    height: 53px;
+    opacity: 0;
+}
+
+.ctaRect {
+    background-position: -240px -75px;
+    left: 441px;
+    top: 20px;
+    width: 152px;
+    height: 54px;
+    opacity: 0;
+}
+
+/***********************************
+ PLACE YOUR CUSTOM SPRITE CSS BELOW
+ .sampleName is safe to delete
+ **********************************/
+
+.part0 {
+    background-position: -457px -15px;
+    width: 49px;
+    height: 25px;
+    opacity: 0;
+}
+
+.part1 {
+    background-position: -516px -15px;
+    width: 79px;
+    height: 25px;
+    opacity: 0;
+}
+
+.part2 {
+    background-position: -457px -50px;
+    width: 27px;
+    height: 27px;
+    opacity: 0;
+}
+
+.part3 {
+    background-position: -458px -50px;
+    width: 27px;
+    height: 27px;
+    opacity: 0;
+}
+
+.part4 {
+    background-position: -516px -50px;
+    width: 20px;
+    height: 20px;
+    opacity: 0;
+}
+
+.part5 {
+    background-position: -547px -50px;
+    width: 20px;
+    height: 20px;
+    opacity: 0;
+}
+
+.part6 {
+    background-position: -457px -90px;
+    width: 38px;
+    height: 38px;
+    opacity: 0;
+}
+
+.part7 {
+    background-position: -517px -90px;
+    width: 38px;
+    height: 38px;
+    opacity: 0;
+}
+
+.part8 {
+    background-position: -457px -135px;
+    width: 76px;
+    height: 77px;
+    opacity: 0;
+}
+
+.part9 {
+    background-position: -547px -165px;
+    width: 38px;
+    height: 19px;
+    opacity: 0;
+}
+
+.part10 {
+    background-position: -547px -195px;
+    width: 38px;
+    height: 19px;
+    opacity: 0;
+}
+
+.phoneReceiver {
+    background-position: -457px -235px;
+    left: 140px;
+    top: 126px;
+    width: 103px;
+    height: 55px;
+    -ms-transform-origin: 51px 0;
+    -webkit-transform-origin: 51px 0; 
+    transform-origin: 51px 0;
+    opacity: 0;
+}
+
+.phoneBody {
+    background-position: -457px -300px;
+    left: 154px;
+    top: 155px;
+    width: 76px;
+    height: 77px;
+    opacity: 0;
+}
+
+
+#iconHolder, #iconHolder div {
+    backface-visibility: hidden;
+    -ms-backface-visibility: hidden;
+    -moz-backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    
+    translate: transform3d(0,0,0);
+    -ms-translate: transform3d(0,0,0);
+    -moz-translate: transform3d(0,0,0);
+    -webkit-translate: transform3d(0,0,0);
+}
+
+#iconHolder {
+    top: -82px;
+    left: 396px;
+    transform: matrix(0.70, 0, 0, 0.70, 0, 0);    
+    -ms-transform: matrix(0.70, 0, 0, 0.70, 0, 0);    
+    -moz-transform: matrix(0.70, 0, 0, 0.70, 0, 0);    
+    -webkit-transform: matrix(0.70, 0, 0, 0.70, 0, 0);    
+}

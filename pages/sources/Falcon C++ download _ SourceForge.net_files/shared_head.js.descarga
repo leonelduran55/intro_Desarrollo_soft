@@ -1,0 +1,124 @@
+/*global SF, jQuery, $, console, Handlebars */
+
+if (!window.SF) {
+    window.SF = {};
+}
+SF.Ads = SF.Ads || {};
+
+//# Polyfill - addEventListener in IE8
+window.addEventListener = window.addEventListener || function (e, f) { window.attachEvent('on' + e, f); };
+
+//namespaced handlers for GPT helpers
+SF.Ads.Helpers = {
+    parseUnitNameFromPath : function(path){
+        var nameNoPath = path.substring(path.lastIndexOf('/')+1);
+        return nameNoPath;
+    },
+    getContainerIDFromPath : function(path){
+        var nameNoPath = SF.Ads.Helpers.parseUnitNameFromPath(path);
+        return '#' + nameNoPath + '_wrapped';
+    },
+    getPathFromContainerID : function(id) {
+        var unit_id = $('#' + id).parent('.draper').attr('id');
+        if (unit_id) {
+            return unit_id.replace('_wrapped', '');
+        } else {
+            console.warn('Could not find id for ' + id);
+        }
+    },
+    getAdRenderData: function(ad){
+        // currently ad.slot.o._html_ has what we're looking for but the "o" could easily change with updates to GPT js
+        for (var attr in ad.slot) {
+            if (ad.slot[attr] && ad.slot[attr]._html_) {
+                return ad.slot[attr];
+            }
+        }
+    }
+};
+
+SF.Ads.Advertisers = {
+    AdxAdsense: 1276890381,
+    Prebid: 1478656221,
+    House: 1329521181,
+    SF_Deals: 14275154,
+};
+
+//namespaced handlers for GPT event listeners, can be used by individual slots via "client_render_handler" in g.ads list
+SF.Ads.RenderHandlers ={
+    revealIfDelivers:function(e){
+        try {
+            var path = e.slot.getName();
+            var id = SF.Ads.Helpers.getContainerIDFromPath(path);
+            var $wrap = $(id);
+
+            $wrap.removeClass('revealIfDelivers');
+        }
+        catch(err) {
+            console.error(err);
+        }
+    },
+    viewabilityInstrumentation: function(e) {
+        var unitName = e.slot.getName();
+        var $wrappedAd = $(SF.Ads.Helpers.getContainerIDFromPath(e.slot.getAdUnitPath()));
+        $wrappedAd.addClass('viewableImpression');
+        if (SF.Ads.visualViewabilityIndicators ) {
+            $wrappedAd.addClass('viewableImpressionIndicator');
+        }
+        console.log('======== ' + unitName + ' viewability met   ==================');
+    },
+    visibilityInstrumentation: function(e) {
+        var unitName = event.slot.getName();
+        console.log('======== ' + unitName + ' visibility change   ==================');
+        console.log(event);
+    },
+    bidWonIndicator: function(bid) {
+        var adPosition = SF.Ads.Helpers.getPathFromContainerID(bid.adUnitCode);
+        var $wrappedAd = $(SF.Ads.Helpers.getContainerIDFromPath(adPosition));
+        $wrappedAd.addClass('bidWonIndicator');
+
+        var source = '<div class="bid-summary"><b>Bid Won By: {{ bidder }}</b> <br/> CPM: {{cpm}}  <br> Response Time: {{timeToRespond}}ms <br/> Ad ID: {{adId}}</div>';
+
+        $wrappedAd.hover(function(){
+            var template = Handlebars.compile(source);
+            $(this).append(template(bid));
+        }, function(){
+            $('.bid-summary', this).remove();
+        });
+    },
+    exampleCustomHandler :function(e){
+        if(window.console){
+            console.log('position ' + e.slot.b + ' ' + (e.isEmpty ? 'is empty ' : 'rendered!'));
+        }
+    },
+    decorateSizeDelivered: function(e){
+        var $wrappedAd = $(SF.Ads.Helpers.getContainerIDFromPath(e.slot.getAdUnitPath()));
+        $wrappedAd.addClass('sz_' + e.size.toString().replace(',', '_'));
+    },
+    checkDirectSoldForLeadForm: function(e){
+        var direct_sold = (!e.isEmpty && e.advertiserId &&
+                           e.advertiserId !== SF.Ads.Advertisers.AdxAdsense &&
+                           e.advertiserId !== SF.Ads.Advertisers.Prebid &&
+                           e.advertiserId !== SF.Ads.Advertisers.House);
+        var $iframe = $('iframe[data-src-small]');
+        var src_attr = direct_sold ? 'data-src-small' : 'data-src-big';
+        $iframe.attr('src', $iframe.attr(src_attr));
+    }
+};
+
+SF.Ads.listenerForBlockThis = function(e){
+    try {
+        SF.Ads.renderedAds = SF.Ads.renderedAds || [];
+        SF.Ads.renderedAds.push(e);
+        if (!e.isEmpty) {
+            if (!e.advertiserId ||
+                e.advertiserId === SF.Ads.Advertisers.AdxAdsense ||
+                e.advertiserId === SF.Ads.Advertisers.Prebid) {
+                var dom_selector = SF.Ads.Helpers.getContainerIDFromPath(e.slot.getName());
+                $(dom_selector).append('<a href="#" class="btn-blockthis">Report a problem with ad content</a>');
+            }
+        }
+    }
+    catch(err) {
+        window.console.error(err);
+    }
+};

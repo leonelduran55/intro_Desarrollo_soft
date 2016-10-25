@@ -1,0 +1,101 @@
+/*global net, SF, _, $, Handlebars*/
+
+$(function() {
+    if (!$('#project-activity').length) {
+        return;
+    }
+
+    Handlebars.registerHelper('ago', function(date) {
+        date = new Date(date);
+        var seconds = Math.max(Math.floor((new Date() - date) / 1000), 0);
+        var time_frames = [
+                ['year', Math.floor(seconds / 31536000)],
+                ['month', Math.floor(seconds / 2592000)],
+                ['week', Math.floor(seconds / 604800)],
+                ['day', Math.floor(seconds / 86400)],
+                ['hour', Math.floor(seconds / 3600)],
+                ['minute', Math.floor(seconds / 60)]
+            ];
+
+        for (var i=0; i<time_frames.length; i++) {
+            var frame = time_frames[i];
+            var pl = frame[1] > 1 ? 's' : '';
+            if (frame[1] > 0) {
+                return frame[1] + ' ' + frame[0] + pl + ' ago';
+            }
+        }
+        return 'just now';
+    });
+
+    Handlebars.registerHelper('ifTagged', function(tag, options) {
+        if (!this.tags || $.inArray(tag, this.tags) === -1) {
+            return options.inverse(this);
+        }
+        return options.fn(this);
+    });
+
+    Handlebars.registerHelper('cap', function(s) {
+        return s.charAt(0).toUpperCase() + s.slice(1);
+    });
+
+    Handlebars.registerHelper('activity_obj', function(obj) {
+        var s = obj.activity_name;
+        s = Handlebars.Utils.escapeExpression(s);
+        if (obj.activity_url) {
+            s = '<a href="' + obj.activity_url + '">' + s + '</a>';
+        }
+        return new Handlebars.SafeString(s);
+    });
+
+    Handlebars.registerHelper('icon', function(url) {
+        if (url) {
+            return new Handlebars.SafeString('<img src="'+url+'" class="x16 emboss avatar" width="16" height="16"/>');
+        } else {
+            return new Handlebars.SafeString('<b data-icon="U" class="ico ico-user x16 emboss avatar"></b>');
+        }
+    });
+
+    function update_following_status(result) {
+        var $action = $('#follow-action');
+        if (result.following) {
+            $action.addClass('active');
+            $action.attr('title', $action.attr('title').replace('Follow ', 'Stop following '));
+        } else {
+            $action.removeClass('active');
+            $action.attr('title', $action.attr('title').replace('Stop following ', 'Follow '));
+        }
+    }
+
+    function follow_unfollow(e) {
+        var $this = $(this);
+        var data = {
+                'follow': !$this.hasClass('active'),
+                '_session_id': $.cookie('_session_id')
+            };
+        $.post($this.attr('href'), data, update_following_status, 'json');
+        e.preventDefault();
+        return false;
+    }
+
+    function render_project_activity(data) {
+        if (!data.timeline.length) {
+            return;
+        }
+
+        $('#project-activity').html(template(data));
+
+        var $action = $('#follow-action');
+        $action.attr('title', (data.following ? 'Stop following ' : 'Follow ') + $action.attr('title'));
+        $action.click(follow_unfollow);
+    }
+
+    var activity_rss_url = $('link[rel=alternate][href*=activity]').attr('href');
+    var activity_json_url = '/rest' + activity_rss_url.replace('/feed', '?limit=5');
+    var template = Handlebars.compile($('#project-activity-template').html());
+
+    $.ajax({
+        dataType: 'json',
+        global: false,
+        url: activity_json_url,
+        success: render_project_activity});
+});

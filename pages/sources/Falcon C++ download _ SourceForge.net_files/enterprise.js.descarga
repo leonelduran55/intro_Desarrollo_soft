@@ -1,0 +1,30 @@
+/*global $, ga */
+
+$(function() {
+  if (!$('#pg_enterprise').length) {
+    return;
+  }
+  function trackCarousel() {
+      var current = $('#featured').data('nivo:vars').currentSlide;
+      var currentSlide = $('#featured a.item')[current];
+      if(window.ga) {
+          ga('send', 'event', 'CarouselView', $(currentSlide).attr('title'));
+      }
+  }
+
+  if ($('#featured').length > 0) {
+    $('#featured').nivoSlider({
+        effect: 'fade',
+        pauseTime: 5000,
+        afterChange: function() {
+            trackCarousel();
+        },
+        afterLoad: function() {
+            trackCarousel();
+        }
+    });
+    $('#featured a.item').click(function() {
+        ga('send', 'event', 'CarouselClick', $(this).attr('title'));
+    });
+  }
+});

@@ -1,0 +1,275 @@
+/*global SF, _, log, console, $ */
+
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Function/bind#Polyfill
+/*jshint ignore:start*/
+if (!Function.prototype.bind) {
+  Function.prototype.bind = function(oThis) {
+    if (typeof this !== 'function') {
+      // closest thing possible to the ECMAScript 5
+      // internal IsCallable function
+      throw new TypeError('Function.prototype.bind - what is trying to be bound is not callable');
+    }
+
+    var aArgs   = Array.prototype.slice.call(arguments, 1),
+        fToBind = this,
+        fNOP    = function() {},
+        fBound  = function() {
+          return fToBind.apply(this instanceof fNOP
+                 ? this
+                 : oThis,
+                 aArgs.concat(Array.prototype.slice.call(arguments)));
+        };
+
+    if (this.prototype) {
+      // Function.prototype doesn't have a prototype property
+      fNOP.prototype = this.prototype;
+    }
+    fBound.prototype = new fNOP();
+
+    return fBound;
+  };
+}
+/*jshint ignore:end*/
+
+/*basic sticky pinning of elements on the page, decorated with class "sticky"*/
+SF.Stickify = (function(){
+
+    var defaults = {};
+
+    function Stickify($el, options){
+
+        this.o = $.extend({}, defaults, options);
+
+        this.pinned = false;
+        this.$el = $el;
+        this.$first_child = $el.find('> :first-child').eq(0);
+        this.$anchor = $el.siblings('.sticky-anchor').eq(0);
+        this.div_top = this.$anchor.offset().top;
+
+        //assuming the first ad in the container is what we care about for stickiness eligibility
+        this.viewabilityRequirementAd = $('.draper', this.$el).eq(0);
+
+        $(window).scroll(this.sticky_relocate.bind(this));
+        this.sticky_relocate();
+    }
+
+    Stickify.prototype.sticky_relocate = function($el) {
+        var sticky_left_offset = this.$first_child.offsetParent().offset().left;
+        this.window_top = $(window).scrollTop();
+
+        if (this.window_top > this.div_top) {
+            if (!this.is_pinned && !this.checkViewabilityRequirement()) {
+                this.$el.addClass('stick');
+            }
+            this.is_pinned = true;
+
+        } else {
+            this.$el.removeClass('stick');
+            this.is_pinned = false;
+        }
+    };
+
+    Stickify.prototype.checkViewabilityRequirement = function() {
+        if (this.viewabilityRequirementAd.hasClass('viewableImpression')) {
+            return true;
+        } else {
+            return false;
+        }
+    };
+
+    return Stickify;
+})();
+
+
+SF.ScrollFixable = (function(){
+    var defaults = {
+        avoidElement : '#banner-sterling .sticky',
+    };
+
+    function ScrollFixable($el, options){
+        if (! $el || $el.length === 0) {
+            // abandon if there isn't an element to make sticky.
+            return;
+        }
+        this.o = $.extend({}, defaults, options);
+        this.$el = $el;
+        this.$parent = $el.parent();
+        this.$avoid = $(this.o.avoidElement);
+        this.leftPositionContext = window.innerWidth;
+        this.originalTop = null; // wait til last possible moment to calc this
+        this.enabled = true;
+        this.freezePoint = null;
+
+        //the files page has trouble with jumping heights.
+        //correct with hard-coded handicap value for now.
+        this.floorCompensate = this.$el.attr('data-floor-compensate') || 0;
+
+        //cache a bound instance of this function for reliable $.on() and $.off(),
+        //as the method expects its context to be the current instance (rather than the default jQ event)
+        //(and we can't just recklessly call window.scroll.off)
+        this.boundScrollDelegate = this.scrollRelocate.bind(this);
+
+        this.init();
+
+        this.scrollRelocate();
+    }
+
+    ScrollFixable.prototype.baseTop = function() {
+        var result = 0;
+        if (!this.$avoid.hasClass('stick')) {
+            //if it's not sticky, we don't want to avoid it.
+            return result;
+        }
+        if (this.$avoid.length) {
+            result = this.$avoid.outerHeight();
+        }
+        return result;
+    };
+
+    ScrollFixable.prototype.disabling = function() {
+        return this.freezePoint !== null;
+    };
+
+    ScrollFixable.prototype.parentHeight = function() {
+        this._nav = this._nav || this.$el.siblings('nav');
+        function calc() {
+            var result = this.$parent.outerHeight();
+            result += parseInt(this.$parent.css('padding-top')) + parseInt(this.$parent.css('padding-bottom'));
+            if (this._nav){
+                result += (this._nav.outerHeight(true) * 2);
+            }
+            return result;
+
+        }
+        return calc.apply(this);
+    };
+
+
+    ScrollFixable.prototype.enforceFloor = function() {
+        if (this.enabled){
+            var limitHeight = this.parentHeight() - this.$el.offset().top + this.baseTop();
+            this.$el.height(limitHeight + parseInt(this.floorCompensate));
+        }
+    };
+
+    //main scroll handler
+    ScrollFixable.prototype.scrollRelocate = function() {
+        if (!this.enabled) {
+            return;
+        }
+        if (this.originalTop === null) {
+            this.originalTop = this.$el.offset().top;
+        }
+        var windowScrollTop = $(window).scrollTop();
+        if (this.disabling()){
+            //we are gracefully winding down.
+
+            //going up or down?
+            if (windowScrollTop > this.freezePoint) {
+                // going down
+                var newTop = windowScrollTop - this.freezePoint ;
+                var adjustedNewTop = -newTop + this.baseTop();
+                this.$el.css('top', adjustedNewTop);
+            }
+            else {
+                // going up...
+                if (windowScrollTop <= this.originalTop) {
+                    // at the top yet?
+                    this.disable();
+                } else {
+                    this.$el.css('top', this.baseTop());
+                    //make sure this.freezePoint is updated to latest top point
+                    //as we continue upward
+                    this.freezePoint = windowScrollTop;
+                }
+            }
+            this.enforceFloor();
+            return;
+        }
+
+        this.checkViewabilityRequirement();
+        this.nativeTop = this.$el.offset().top;
+        this.scrollPositionY = windowScrollTop;
+        if (this.scrollPositionY  >= this.nativeTop - this.baseTop() && this.scrollPositionY >= this.originalTop - this.baseTop()) {
+            //before taking this action, must ensure that the widget is still
+            //enabled, and a race condition hasn't occurred where it should now
+            //be disabled
+            if (!this.is_pinned && this.enabled) {
+                // calc before we are about to go fixed
+                this.leftPosition = this.$el.offset().left;
+                this.horizontalRelocate();
+
+                this.$el.addClass('scroll-fixable-enabled');
+                this.$el.css('top', this.baseTop());
+            }
+            this.is_pinned = true;
+        } else {
+            this.$el.removeClass('scroll-fixable-enabled');
+            this.is_pinned = false;
+        }
+
+        if (this.is_pinned) {
+            this.enforceFloor();
+        }
+    };
+
+
+    ScrollFixable.prototype.horizontalRelocate = function(newLeft) {
+        this.$el.css('left', newLeft || this.leftPosition );
+    };
+
+
+    ScrollFixable.prototype.calculateHorizontalPosition = function() {
+        var delta = this.leftPositionContext - window.innerWidth;
+        this.leftPosition = this.leftPosition - (delta / 2);
+        this.leftPositionContext = window.innerWidth;
+        this.horizontalRelocate();
+    };
+
+
+    ScrollFixable.prototype.disableGracefully = function($el) {
+        this.freezePoint = $(window).scrollTop();
+        this.scrollRelocate();
+    };
+
+    ScrollFixable.prototype.disable = function($el) {
+        this.enabled = false;
+        this.$el.removeClass('scroll-fixable-enabled');
+        this.is_pinned = false;
+        $(window).off('scroll', this.boundScrollDelegate);
+        $('body').off('widthChanged');
+        this.$el.removeAttr('style');
+    };
+
+    ScrollFixable.prototype.checkViewabilityRequirement = function() {
+        if (this.enabled && !this.disabling() && this.viewabilityRequirementAd.hasClass('viewableImpression')) {
+            this.disableGracefully();
+        }
+    };
+
+
+    ScrollFixable.prototype.init = function($el) {
+
+        $(window).on('scroll', this.boundScrollDelegate);
+
+        $('body').on('widthChanged', this.calculateHorizontalPosition.bind(this));
+
+        //assuming the first ad in the scrollfixable container is what we care about for stickiness lifetime
+        this.viewabilityRequirementAd = $('.draper', this.$el).eq(0);
+
+        //one time standup
+        if (!SF.viewportWidth) {
+            SF.viewportWidth = window.innerWidth;
+            window.addEventListener('resize', function(event){
+                if (SF.viewportWidth === event.target.innerWidth){
+                    return;
+                }else{
+                    SF.viewportWidth = event.target.innerWidth;
+                    $('body').trigger('widthChanged');
+                }
+            });
+        }
+    };
+
+    return ScrollFixable;
+})();

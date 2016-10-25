@@ -1,0 +1,166 @@
+/**********************************
+* Icon Animation .JS Fragment File
+***********************************/
+var iconAnimationName = "Phone";
+var iconAnimationVersion = 1.5;
+var spriteSheetName = "spritesheet_phone.png";
+var spriteSheet = new Image();
+
+// For rescaling on other unit sizes
+var iconUnitScale = 1.; // Scale = 1 for 300x250
+var iconRegistrationX = 0; // Null registration point of animation. Adjust as needed on other unit sizes (728x90, 160x600)
+var iconRegistrationY = 0; // 0, 0 is based on the 300x250
+
+// From Dynamic API
+var iconAnimationStartTime = parseFloat(dynamicContent.Google_Tangram_Feed__LATAM__All_Regions__Q32015_Sheet1[0].Start_Time_Icon_Animation); //Start_Time_Icon_Animation
+var copyBatch2StartTime = parseFloat(dynamicContent.Google_Tangram_Feed__LATAM__All_Regions__Q32015_Sheet1[0].Start_Time_Text_2); //Start_Time_Icon_Animation
+
+var phoneParts = [];
+var phonePartCount = 11;
+var phonePartStartX = [40, 104, 9, 212, 82, 197, 82, 230, 141, 116, 230];
+var phonePartStartY = [111, 111, 150, 111, 152, 206, 180, 149, 211, 174, 193];
+var phonePartDockX = [140, 164, 140, 217, 172, 192, 154, 192, 154, 173, 173];
+var phonePartDockY = [126, 126, 151, 151, 155, 155, 193, 193, 155, 174, 193];
+var phoneRing1Start = iconAnimationStartTime + 3.4;
+var phoneRing2Start = copyBatch2StartTime + 3.4;
+var phoneShakeDuration = 0.08;
+var shakeLeft = 3;
+var shakeRight = -3;
+
+function createIconParts()
+{
+	var i = 0;
+	var tempElement;
+	var iconHolder = $("#iconHolder");;
+	// Create Phone Icon Parts & attach to DOM
+	for (i = 0; i < phonePartCount; i++)
+	{
+		tempElement =  document.createElement("div");
+		tempElement.setAttribute("id", "phonePart" + i);
+		tempElement.setAttribute("class", "sprite part" + i);
+		iconHolder.appendChild(tempElement);
+		phoneParts[i] = $("#phonePart" + i);
+		TweenLite.to(phoneParts[i], 0, {opacity:0, x:(phonePartStartX[i] * iconUnitScale + iconRegistrationX), y:(phonePartStartY[i] * iconUnitScale + iconRegistrationY)});
+	}
+
+	// Create & Attach Phone Receiver Handle to DOM
+	tempElement =  document.createElement("div");
+	tempElement.setAttribute("id", "phoneReceiverSprite");
+	tempElement.setAttribute("class", "sprite phoneReceiver");
+	iconHolder.appendChild(tempElement);
+
+	// Create & Attach Phone Body to DOM
+	tempElement =  document.createElement("div");
+	tempElement.setAttribute("id", "phoneBodySprite");
+	tempElement.setAttribute("class", "sprite phoneBody");
+	iconHolder.appendChild(tempElement);
+}
+
+function initIconAnimations()
+{
+	var phoneShakeHeight =  2 * iconUnitScale;
+	var phoneShakeUp = "-=" + phoneShakeHeight;
+	var phoneShakeDown = "+=" + phoneShakeHeight;
+
+	// Timeline Markers Definitions
+	tlIcon.addLabel("dockPhone", iconAnimationStartTime);
+	tlIcon.addLabel("showDialParts", iconAnimationStartTime + 0.7);
+	tlIcon.addLabel("dockDialParts", iconAnimationStartTime + 1);
+	tlIcon.addLabel("shiftPhone", iconAnimationStartTime + 1);
+	tlIcon.addLabel("shiftPhone2", iconAnimationStartTime + 2);
+	tlIcon.addLabel("hidePhoneParts", iconAnimationStartTime + 2.4);
+
+	tlIcon.addLabel("phoneRing1", phoneRing1Start);
+	tlIcon.addLabel("shakeA1", phoneRing1Start + phoneShakeDuration);
+	tlIcon.addLabel("shakeA2", phoneRing1Start + phoneShakeDuration * 2);
+	tlIcon.addLabel("shakeA3", phoneRing1Start + phoneShakeDuration * 3);
+	tlIcon.addLabel("shakeA4", phoneRing1Start + phoneShakeDuration * 4);
+	tlIcon.addLabel("shakeA5", phoneRing1Start + phoneShakeDuration * 5);
+	tlIcon.addLabel("shakeA6", phoneRing1Start + phoneShakeDuration * 6);
+	tlIcon.addLabel("shakeA7", phoneRing1Start + phoneShakeDuration * 7);
+	tlIcon.addLabel("shakeA8", phoneRing1Start + phoneShakeDuration * 8);
+	tlIcon.addLabel("shakeA9", phoneRing1Start + phoneShakeDuration * 9);
+
+	tlIcon.addLabel("phoneRing2", phoneRing2Start);
+	tlIcon.addLabel("shakeB1", phoneRing2Start + phoneShakeDuration);
+	tlIcon.addLabel("shakeB2", phoneRing2Start + phoneShakeDuration * 2);
+	tlIcon.addLabel("shakeB3", phoneRing2Start + phoneShakeDuration * 3);
+	tlIcon.addLabel("shakeB4", phoneRing2Start + phoneShakeDuration * 4);
+	tlIcon.addLabel("shakeB5", phoneRing2Start + phoneShakeDuration * 5);
+	tlIcon.addLabel("shakeB6", phoneRing2Start + phoneShakeDuration * 6);
+	tlIcon.addLabel("shakeB7", phoneRing2Start + phoneShakeDuration * 7);
+	tlIcon.addLabel("shakeB8", phoneRing2Start + phoneShakeDuration * 8);
+	tlIcon.addLabel("shakeB9", phoneRing2Start + phoneShakeDuration * 9);
+
+	// Animation Definitions
+    // Dock phone
+	dockPhone();
+	tlIcon.to([$("#phonePart9"), $("#phonePart10")], 0.3, {opacity:1}, "showDialParts")
+	tlIcon.to($("#phonePart9"), 1, {x:(phonePartDockX[9] * iconUnitScale + iconRegistrationX), y:(phonePartDockY[9] * iconUnitScale + iconRegistrationY), ease:Power3.easeInOut}, "dockDialParts");
+	tlIcon.to($("#phonePart10"), 1, {x:(phonePartDockX[10] * iconUnitScale + iconRegistrationX), y:(phonePartDockY[10] * iconUnitScale + iconRegistrationY), ease:Power3.easeInOut}, "dockDialParts");
+	tlIcon.to($("#phoneReceiverSprite"), 0.4, {opacity:1}, "shiftPhone");
+	tlIcon.to($("#phoneBodySprite"), 0.4, {opacity:1}, "shiftPhone2");
+	hidePhoneParts();
+
+	// Phone Ring #1
+	tlIcon.to($("#phoneReceiverSprite"), phoneShakeDuration, {y:phoneShakeUp, rotation:shakeLeft}, "shakeA1");
+	tlIcon.to($("#phoneReceiverSprite"), phoneShakeDuration, {rotation:shakeRight}, "shakeA2");
+	tlIcon.to($("#phoneReceiverSprite"), phoneShakeDuration, {rotation:shakeLeft}, "shakeA3");
+	tlIcon.to($("#phoneReceiverSprite"), phoneShakeDuration, {rotation:shakeRight}, "shakeA4");
+	tlIcon.to($("#phoneReceiverSprite"), phoneShakeDuration, {rotation:shakeLeft}, "shakeA5");
+	tlIcon.to($("#phoneReceiverSprite"), phoneShakeDuration, {rotation:shakeRight}, "shakeA6");
+	tlIcon.to($("#phoneReceiverSprite"), phoneShakeDuration, {rotation:shakeLeft}, "shakeA7");
+	tlIcon.to($("#phoneReceiverSprite"), phoneShakeDuration, {rotation:shakeRight}, "shakeA8");
+	tlIcon.to($("#phoneReceiverSprite"), phoneShakeDuration, {y:phoneShakeDown, rotation:0}, "shakeA9");
+
+	// Phone Ring #2
+	tlIcon.to($("#phoneReceiverSprite"), phoneShakeDuration, {y:phoneShakeUp, rotation:shakeLeft}, "shakeB1");
+	tlIcon.to($("#phoneReceiverSprite"), phoneShakeDuration, {rotation:shakeRight}, "shakeB2");
+	tlIcon.to($("#phoneReceiverSprite"), phoneShakeDuration, {rotation:shakeLeft}, "shakeB3");
+	tlIcon.to($("#phoneReceiverSprite"), phoneShakeDuration, {rotation:shakeRight}, "shakeB4");
+	tlIcon.to($("#phoneReceiverSprite"), phoneShakeDuration, {rotation:shakeLeft}, "shakeB5");
+	tlIcon.to($("#phoneReceiverSprite"), phoneShakeDuration, {rotation:shakeRight}, "shakeB6");
+	tlIcon.to($("#phoneReceiverSprite"), phoneShakeDuration, {rotation:shakeLeft}, "shakeB7");
+	tlIcon.to($("#phoneReceiverSprite"), phoneShakeDuration, {rotation:shakeRight}, "shakeB8");
+	tlIcon.to($("#phoneReceiverSprite"), phoneShakeDuration, {y:phoneShakeDown, rotation:0}, "shakeB9");
+
+	// End Animation
+}
+
+function dockPhone()
+{
+	var i = 0;
+	for (i = 0; i < phonePartCount - 2; i ++)
+	{
+		tlIcon.to(phoneParts[i], 0.3, {opacity:1}, "dockPhone");
+		tlIcon.to(phoneParts[i], 1, {x:(phonePartDockX[i] * iconUnitScale + iconRegistrationX), y:(phonePartDockY[i] * iconUnitScale + iconRegistrationY), ease:Power4.easeInOut}, "dockPhone");
+	}
+}
+
+function hidePhoneParts()
+{
+	var i = 0;
+	for (i = 0; i < phonePartCount; i ++)
+	{
+		tlIcon.to(phoneParts[i], 0, {opacity:0}, "hidePhoneParts");
+	}
+}
+
+// Create and initialize icon parts + animation
+createIconParts();
+initIconAnimations();
+
+console.log("Animation: " + iconAnimationName + " ver " + iconAnimationVersion);
+console.log("-----");
+
+// play animation once spritesheet is confirmed to have loaded
+function onSpriteSheetLoad(e)
+{
+	// startAnimations is called from main.js
+	// it will play the main timeline (tl)
+	// + your icon timeline (tlIcon) at the same time
+	startAnimations(); // STARTS THE ENTIRE UNIT ANIMATION when SpriteSheet is loaded
+}
+
+spriteSheet.addEventListener("load", onSpriteSheetLoad, false);
+spriteSheet.src = spriteSheetName;

@@ -1,0 +1,452 @@
+/*global $, ga, FB, twttr, unescape, SF */
+
+var _project;
+var get_project = function(){
+    if(!_project){
+        _project = $('meta#project_name').attr('content');
+    }
+   return _project;
+};
+
+var project_name = get_project();
+
+//setup ellipsis on review immediately
+var truncation = (function(){
+
+    //only applicable to PSPs
+    var $body = $('body');
+    if($body.attr('id') !== "pg_project"){
+        return;
+    }
+
+    var pathname = window.location.pathname;
+    function truncateReview(){
+        var d3Config = {after:".read-more-editorial", watch:true};
+        $('#editorial-review-contnt').append('<a class="read-more-editorial"><b>Read More &#187;</b></a>');
+        $('#editorial-review').height('125').dotdotdot(d3Config);
+    }
+
+    function unTruncateReview(e){
+        e.preventDefault();
+        var me = this;
+        if(window.ga){
+            var project_name = get_project();
+            if ($(me).attr('href')){
+                ga('send', 'pageview', {
+                  'hitCallback': function() {
+                    window.location = $(me).attr('href');
+                  }
+                });
+            }
+            else{
+                $('#editorial-review').trigger('destroy').css({'height': 'auto'});
+            }
+            ga('send', 'event', 'Summary', 'EditorialRedirect', project_name, 1, {'nonInteraction': 1});
+        }
+    }
+
+    truncateReview();
+
+    //only retain the inline expand for EVPSP
+    if (! $body.hasClass('enterprise')) {
+        var editorial_redirect = "/projects/" + project_name + "/editorial/?source=psp";
+        $('.read-more-editorial').attr('href', editorial_redirect);
+    }
+
+    $('#editorial-review').delegate('.read-more-editorial', 'click', unTruncateReview);
+    $('#editorial-review').delegate('.read-less-editorial','click', truncateReview);
+
+    return {truncateReview:truncateReview, unTruncateReview:unTruncateReview};
+
+})();
+
+$(function() {
+    var review = $('#pg_reviews');
+    var editorial = $('#pg_editorial');
+
+    function setGAListener() {
+        $('.review-toggle').click(function (evt) {
+            evt.preventDefault();
+            var target = $(this).prop('href');
+            var project_info_type = '';
+            if (editorial.length > 0) {
+                project_info_type = "Editorials";
+            } else {
+                project_info_type = "Reviews";
+            }
+            if (window.ga) {
+                ga('send', 'pageview', {
+                  'hitCallback': function() {
+                    window.location = target;
+                  }
+                });
+                var event_action = project_info_type + 'Redirect';
+                ga('send', 'event', 'Reviews', event_action, project_name, 1, {'nonInteraction': 1});
+            }
+        });
+    }
+
+    if (review.length > 0 || editorial.length > 0) {
+        setGAListener();
+    }
+
+    var $project = $('#pg_project');
+    if (!$project.length) {
+        return;
+    }
+
+    function showDetails(e) {
+        e.preventDefault();
+        $(this).hide();
+        $('.collapse').show();
+        $('#additional-details > .content').slideDown();
+    }
+
+    function hideDetails(e) {
+        e.preventDefault();
+        $(this).hide();
+        $('.expand').show();
+        $('#additional-details > .content').slideUp();
+    }
+
+    function editOn() {
+        var $target = $(this);
+        if ($target.hasClass('editable')) {
+            $target.addClass('editable-active');
+        } else {
+            $target.parents('.editable').addClass('editable-active');
+        }
+    }
+
+    function editOff() {
+        var $target = $(this);
+        if ($target.hasClass('editable')) {
+            $target.removeClass('editable-active');
+        } else {
+            $target.parents('.editable').removeClass('editable-active');
+        }
+    }
+
+    function initAdmin() {
+        // color the background of an editable chunk if the user is hovering over the edit link
+        $('.edit-button').hover(editOn, editOff);
+    }
+
+    function initEnterprise() {
+        if (!$('#additional-details').hasClass('expanded')) {
+            if ($.cookie('show_details') === 'expand') {
+                $('#additional-details > .content').show();
+                $('.collapse').show();
+            } else {
+                $('#additional-details > .content').hide();
+                $('.expand').show();
+            }
+            $('#additional-details header a').on('click', function() {
+                $.cookie('show_details', this.className);
+            });
+            $('.expand').on('click', showDetails);
+            $('.collapse').on('click', hideDetails);
+        }
+        if($('#reviews').length > 0 && $('.helpful-reviews').length === 0) {
+            $('#reviews-header').addClass('no-helpful');
+        }
+        $('#partners, #events, #related-books, #add-ons-plugins .content-group').each(function() {
+            var self = $(this);
+            self.pajinate({
+                items_per_page: self.attr('data-per-page'),
+                show_first_last: false,
+                nav_label_prev: 'Previous',
+                abort_on_small_lists: true,
+                num_page_links_to_display: 0
+            });
+            self.find('.page_navigation .ellipse').remove();
+        });
+    }
+
+    function init() {
+        $('#main-content').css('min-height', $('#sidebar').height());
+
+        var $subscribe = $('#subscribe-form');
+        $subscribe.submit(function(e) {
+            e.preventDefault();
+            $.ajax({
+                url: $subscribe.attr('action'),
+                type: 'POST',
+                data: $subscribe.serialize(),
+                success: function(data, textStatus, xhr) {
+                    $('#messages').notify(data.message, {status: data.status});
+                    if($('#subscriber-email[type=email]').length > 0) {
+                        $('#subscriber-email').clone().attr('type', 'hidden').appendTo($subscribe);
+                        $subscribe.find('input[type=email]').remove();
+                        $('#subscriber-existing-email').children('code').
+                            text($('#subscriber-email').val()).end().show();
+                    }
+                    if ($subscribe.attr('action') === 'subscribe') {
+                        $('#subscriber-submit>span').text('Unsubscribe from Updates');
+                        $subscribe.attr('action', 'unsubscribe');
+                    } else {
+                        $('#subscriber-submit>span').text('Subscribe to Updates');
+                        $subscribe.attr('action', 'subscribe');
+                    }
+                },
+                error: function(xhr, textStatus, errorThrown) {
+                    var resp = $.parseJSON(xhr.responseText);
+                    $('#messages').notify(resp.error, {status: 'error'});
+                }
+            });
+        });
+
+        if ($('#overview .screenshot img').length > 0) {
+            $('#overview section.screenshot').nivoSlider({
+                effect: 'fade',
+                animSpeed: 250,
+                manualAdvance: true
+            });
+        }
+
+        $('.has-qtip').qtip({});
+
+      $('.enterprise #toggle-description').click(function() {
+          $('#toggle-description, #project-description, #project-summary').toggle();
+          return false;
+      });
+    }//end init
+
+    if ($project.hasClass('admin')) {
+        initAdmin();
+    }
+    if ($project.hasClass('enterprise')) {
+        initEnterprise();
+    }
+    init();
+
+    var $metadata_sidebars = $('.sidebar-widget.metadata');
+    if($metadata_sidebars.length) {
+        $metadata_sidebars.find('li a').click(function() {
+            try {
+                var sidebar_label = $(this).parents('aside').find('h3').text();
+                var project_name = get_project();
+                ga('send', 'event', 'MetadataSidebarClick', project_name + ': ' + sidebar_label, $(this).attr('href'));
+            } catch(err) {}
+        });
+    }
+
+    var $project_nav = $('#project-nav');
+    if($project_nav.length) {
+        var $position = $project_nav.offset().top;
+        $(window).scroll(function() {
+            if ($(window).scrollTop() > $position + $project_nav.height()) {
+                // adjust top based on presence of sticky leaderboard
+                if($('.sticky.stick').length === 0) {
+                    $project_nav.css('top', 0);
+                } else {
+                    $project_nav.css('top', $('.sticky.stick').height());
+                }
+
+                // present the nav
+                $project_nav.addClass('fixed');
+                $project_nav.slideDown(800);
+            } else {
+                $project_nav.removeClass('fixed');
+                $project_nav.css('top', 'auto'); // restore top after responding to sticky leaderboard
+            }
+        });
+        $('body').scrollspy({offset:50});
+    }
+});
+
+// Functions that originated on the summary page but are required elsewhere
+//
+$(function() {
+    var $page_id = $('body').attr('id');
+    if ($.inArray($page_id, ['pg_project', 'pg_reviews']) === -1) {
+        return;
+    }
+
+    if ($('form.rate-this-project').length > 0) {
+        var $rate_form = $('form.rate-this-project');
+        $rate_form.find('.star-rating').click(function() {
+            $(this).parents('form').submit();
+        });
+        $rate_form.find('input.star').change(function() {
+            $(this).parents('form').submit();
+        });
+    }
+
+    //start countdown timer
+    var $countdownContainer = $('#download_countdown');
+    var $counter = $('.data', $countdownContainer);
+    var timer = new CountdownTimer(
+        new Date($countdownContainer.attr('data-target-date')*1000),
+        new Date($countdownContainer.attr('data-start-date')*1000),
+        parseInt($countdownContainer.attr('data-start-count'))
+    );
+    var callback = function(count){
+        $counter.html(count);
+    };
+    timer.start(null, callback);
+
+    //browser warning - gets us around fragment caching issue.
+    var $warning = $('.browser-warning');
+    if ($warning.length > 0 && $('body.enterprise').length===0 ){
+        $warning.detach().show().appendTo('#browser-warning-placeholder');
+    }
+});
+
+
+// Because social engagement tracking is dependent on 3rd party scripts
+// we need to make sure they're fully loaded before executing.
+$(window).on('load', function() {
+    // Twitter doesn't seem to use standard query params, but
+    // but rather tacks them onto the anchor.
+    function extractTwitterParams(uri, paramName) {
+        if (!uri) {
+            return;
+        }
+        var parts = decodeURI(uri).split('&');  // Check for query params.
+        if (parts.length === 1) {
+            return;
+        }
+        // Find url param.
+        paramName += '=';
+        for (var i = 0; i < parts.length; ++i) {
+            var param = parts[i];
+            if (param.indexOf(paramName) === 0) {
+                return unescape(param.split('=')[1]);
+            }
+        }
+    }
+
+    // setup social engagement tracking
+    if (window.FB) {
+        FB.Event.subscribe('edge.create', function(targetUrl) {
+            ga('send', {
+              'hitType': 'social',
+              'socialNetwork': 'facebook',
+              'socialAction': 'like',
+              'socialTarget': targetUrl
+            });
+        });
+    }
+    if (window.twttr) {
+        twttr.events.bind('tweet', function(event) {
+            if (event) {
+                var targetUrl;
+                if (event.target && event.target.nodeName === 'IFRAME') {
+                    targetUrl = extractTwitterParams(event.target.src, 'url');
+                }
+                ga('send', {
+                  'hitType': 'social',
+                  'socialNetwork': 'twitter',
+                  'socialAction': 'tweet',
+                  'socialTarget': targetUrl
+                });
+            }
+        });
+    }
+});
+
+
+
+/***********************************
+// given a target date, and a count as of a given start date,
+// calculates the rate at which DLs will happen
+//
+/***********************************/
+var CountdownTimer = (function(){
+
+  var self;
+
+  //set instance attrs, and calculate the offset for current time
+  function CountdownTimer(targetDate, startDate, startCount, targetCount){
+    self = this;
+
+    this.targetCount =  targetCount || 100000000; // 100 million
+    this.startCount = startCount;
+    this.targetDate = targetDate || new Date(2014, 3, 17, 12, 0, 0, 0);
+    this.startDate = startDate;
+    this.currentDate = new Date();
+    this.currentCount = startCount;
+
+    //fast forward the current count using startDate and startCount
+    this.currentCount = startCount + this.initialOffset();
+  }
+
+  //calculate the DL rate per ms based on expected milestone date
+  CountdownTimer.prototype.calculateRate = function(){
+    return self.countRemaining() / self.msRemaining();
+  };
+
+  //DLs remaining to target number
+  CountdownTimer.prototype.countRemaining = function(){
+    return self.targetCount - self.currentCount;
+  };
+
+  //ms diff between start date and target date
+  CountdownTimer.prototype.msRemaining = function(){
+    return self.targetDate - self.startDate;
+  };
+
+  //inital amount of Dls to fastforward based on startdate and now
+  CountdownTimer.prototype.initialOffset = function(){
+    return (self.currentDate - self.startDate) * this.calculateRate();
+  };
+
+  //prettify the count
+  CountdownTimer.prototype.prettyCount = function(){
+    var x = Math.floor(self.currentCount);
+    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  };
+
+  //start the counter, to fire at the provided interval. optional callback
+  CountdownTimer.prototype.start = function(interval, callback){
+    interval = interval || 1000;
+    self.callback = callback;
+    //self.interval = setInterval(interval, _decrement);
+    self.interval = setInterval(function(){
+      _decrement(interval, callback);
+    }, interval);
+  };
+
+  var _decrement = function(interval, callback){
+    var rate = self.calculateRate();
+
+    var amount = rate * interval;
+
+    self.currentCount += amount;
+
+    //console.log('decremented after ' + rate + '  ' + (self.prettyCount()));
+
+    if(callback){
+      callback(self.prettyCount());
+    }
+  };
+
+  CountdownTimer.prototype.stop = function(){
+    self.interval = clearInterval(self.interval);
+  };
+
+  return CountdownTimer;
+
+})();
+
+
+// Modify External Links
+$( function() {
+  var modLink = function() {
+    $(this).attr('target', '_blank');
+    $(this).append(" <img src='" + SF.cdn + "/img/icons/external_asset.png'/>");
+  };
+
+  // Project navigation tool links are for requests to sfpy or allura, which will fetch the underling URLs.
+  // Such links that are external were marked by server code with attribute 'data-external'.
+  $('a[data-external]').each(modLink);
+  $('a[data-external]').click(function() {
+    ga('send', 'event', 'ExternalLink', 'click');
+    });
+
+  // Get all external links by ruling out some internal link patterns:
+  var descA = $('#project-description a');
+  descA.not('[href^="/"]').not('[href^="#"]').not('[href^="."]').not('[href*="sourceforge.net"]').not('[href*="sb.sf.net"]').each(modLink);
+
+});

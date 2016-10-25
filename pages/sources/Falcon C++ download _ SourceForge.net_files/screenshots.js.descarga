@@ -1,0 +1,80 @@
+/*global $ */
+
+
+$(function() {
+    var selectors = '#project-screenshots, #guide-screenshots, .gallery';
+    if (!$(selectors).length) { return; }
+    var $screenshots = $(selectors),
+        $slider = $('.slider', $screenshots),
+        $thumbnails = $('.thumbnail', $screenshots),
+        images = {},
+        index = 0,
+        inc = 3,
+        len = $thumbnails.length,
+        width = $thumbnails.first().outerWidth(true),
+        offset = inc * width;
+    // generate additional HTML
+    $screenshots.addClass('enhanced');
+    $slider.prepend('<div title="Previous" class="previous">&#8249;</div>')
+           .append('<div title="Next" class="next">&#8250;</div>');
+
+    function next() {
+        if (len - index <= inc) { return; }
+        index += inc;
+        $(this).siblings('.strip').animate({
+            left: '-=' + offset
+        });
+        $screenshots.trigger('screenshots:change');
+    }
+
+    function previous() {
+        if (index < inc) { return; }
+        index -= inc;
+        $(this).siblings('.strip').animate({
+            left: '+=' + offset
+        });
+        $screenshots.trigger('screenshots:change');
+    }
+
+    function toggleArrows(e) {
+        // check to see if next is needed
+        var $next = $('.next', $screenshots);
+        if (len - index <= inc) {
+            $next.addClass('disabled');
+        } else {
+            $next.removeClass('disabled');
+        }
+        // check to see if previous is needed
+        var $previous = $('.previous', $screenshots);
+        if (index < inc) {
+            $previous.addClass('disabled');
+        } else {
+            $previous.removeClass('disabled');
+        }
+    }
+
+    // setup event handling
+    $screenshots.on('click', '.next', next);
+    $screenshots.on('click', '.previous', previous);
+    $screenshots.on('screenshots:change', toggleArrows);
+    // figure out which arrows should be displayed initially
+    $screenshots.trigger('screenshots:change');
+    // setup fancybox for display
+    //$('a[rel=section]', $screenshots).fancybox({
+    $('.fancybox').fancybox({
+        type: 'image',
+        transitionIn: 'none',
+        transitionOut: 'none',
+        titlePosition: 'inside',
+        titleFormat: function(title, currentArray, currentIndex, currentOpts) {
+            return '<span>Screenshot ' + (currentIndex + 1) + ' / ' + currentArray.length + (title.length ? ' &nbsp; ' + title : '') + '</span>';
+        }
+    });
+    $('.strip', $slider).css({
+        visibility: 'visible',
+        opacity: '0'
+    }).animate({opacity:1});
+    if (window.location.hash === '#screenshots') {
+        $screenshots.find('a:first').trigger('click');
+    }
+});
